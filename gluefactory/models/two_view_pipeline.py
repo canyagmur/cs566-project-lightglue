@@ -67,6 +67,10 @@ class TwoViewPipeline(BaseModel):
             pred_i = {**pred_i, **self.extractor(data_i)}
         elif self.conf.extractor.name and not self.conf.allow_no_extract:
             pred_i = {**pred_i, **self.extractor({**data_i, **pred_i})}
+        print(pred_i.keys())
+        print(pred_i["keypoints"].shape)
+        print(pred_i["keypoint_scores"].shape)
+        print(pred_i["descriptors"].shape)
         return pred_i
 
     def _forward(self, data):

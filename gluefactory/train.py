@@ -37,6 +37,10 @@ from .utils.tools import (
     set_seed,
 )
 
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 # @TODO: Fix pbar pollution in logs
 # @TODO: add plotting during evaluation
 
@@ -217,9 +221,9 @@ def training(rank, conf, output_dir, args):
             # init_cp = get_last_checkpoint(conf.train.load_experiment)
             init_cp = torch.load(str(init_cp), map_location="cpu")
             # load the model config of the old setup, and overwrite with current config
-            conf.model = OmegaConf.merge(
-                OmegaConf.create(init_cp["conf"]).model, conf.model
-            )
+            #conf.model = OmegaConf.merge(
+            #    OmegaConf.create(init_cp["conf"]).model, conf.model
+            #)
             print(conf.model)
         else:
             init_cp = None
@@ -294,7 +298,9 @@ def training(rank, conf, output_dir, args):
         model = torch.compile(model, mode=args.compile)
     loss_fn = model.loss
     if init_cp is not None:
-        model.load_state_dict(init_cp["model"], strict=False)
+        #print(init_cp.keys())
+        #model.load_state_dict(init_cp["model"], strict=False) #CHANGED HERE
+        model.load_state_dict(init_cp, strict=False)
     if args.distributed:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device])
