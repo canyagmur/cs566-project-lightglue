@@ -62,15 +62,18 @@ class TwoViewPipeline(BaseModel):
     def extract_view(self, data, i):
         data_i = data[f"view{i}"]
         pred_i = data_i.get("cache", {})
+        #print(pred_i.keys())
         skip_extract = len(pred_i) > 0 and self.conf.allow_no_extract
         if self.conf.extractor.name and not skip_extract:
             pred_i = {**pred_i, **self.extractor(data_i)}
         elif self.conf.extractor.name and not self.conf.allow_no_extract:
             pred_i = {**pred_i, **self.extractor({**data_i, **pred_i})}
-        print(pred_i.keys())
-        print(pred_i["keypoints"].shape)
-        print(pred_i["keypoint_scores"].shape)
-        print(pred_i["descriptors"].shape)
+        else:
+            print("lets go")
+        # print(pred_i.keys())
+        #print(pred_i["keypoints"].shape)#,pred_i["keypoints"])
+        # print(pred_i["keypoint_scores"].shape)
+        #print(pred_i["descriptors"].shape)
         return pred_i
 
     def _forward(self, data):

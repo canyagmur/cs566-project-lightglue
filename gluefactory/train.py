@@ -39,14 +39,14 @@ from .utils.tools import (
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 # @TODO: Fix pbar pollution in logs
 # @TODO: add plotting during evaluation
 
 default_train_conf = {
     "seed": "???",  # training seed
-    "epochs": 1,  # number of epochs
+    "epochs": 50,  # number of epochs
     "optimizer": "adam",  # name of optimizer in [adam, sgd, rmsprop]
     "opt_regexp": None,  # regular expression to filter parameters to optimize
     "optimizer_options": {},  # optional arguments passed to the optimizer
@@ -257,6 +257,8 @@ def training(rank, conf, output_dir, args):
             )
     else:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    device = "cuda"
     logger.info(f"Using device {device}")
 
     dataset = get_dataset(data_conf.name)(data_conf)
@@ -282,6 +284,7 @@ def training(rank, conf, output_dir, args):
     if rank == 0:
         logger.info(f"Training loader has {len(train_loader)} batches")
         logger.info(f"Validation loader has {len(val_loader)} batches")
+        logger.info(f"VALIDATION RUNNING : {not args.no_eval_0}")
 
     # interrupts are caught and delayed for graceful termination
     def sigint_handler(signal, frame):
@@ -655,7 +658,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--overfit", action="store_true")
     parser.add_argument("--restore", action="store_true")
-    parser.add_argument("--distributed", action="store_true")
+    parser.add_argument("--distributed",action="store_true")
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--print_arch", "--pa", action="store_true")
     parser.add_argument("--detect_anomaly", "--da", action="store_true")

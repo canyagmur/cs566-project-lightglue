@@ -103,18 +103,32 @@ class ImagePairDataset(Dataset):
             raise ValueError('ImagePairDataset: The optical and thermal image must have the same shape')
 
         #HERE I CHANGED
+        keypoints,desc_optical,desc_thermal,keypoint_scores_optical,keypoint_scores_thermal = None, None, None,None,None
         if self.config['keypoints_filename'] is not None:
             with h5py.File(self.config['keypoints_filename'], 'r', swmr=True) as keypoints_file:
                 if "keypoints_optical" in keypoints_file[self.memberslist[index]].keys():
                     keypoints = [np.array(keypoints_file[self.memberslist[index]]["keypoints_optical"])  ,  np.array(keypoints_file[self.memberslist[index]]["keypoints_thermal"])]
+                    keypoint_scores_optical = np.ones(keypoints[0].shape[0])
+                    keypoint_scores_thermal = np.ones(keypoints[1].shape[0])
                 else:
                     keypoints = np.array(keypoints_file[self.memberslist[index]]["keypoints"])
+                    keypoint_scores_optical = np.ones(keypoints.shape[0])
+                    keypoint_scores_thermal = np.ones(keypoints.shape[0])
 
-        else:
-            keypoints = None
+                
+
+                if "desc_optical" in dict(keypoints_file[self.memberslist[index]]).keys() and "desc_thermal" in dict(keypoints_file[self.memberslist[index]]).keys():
+                    desc_optical,desc_thermal = np.array(keypoints_file[self.memberslist[index]]["desc_optical"]),np.array(keypoints_file[self.memberslist[index]]["desc_thermal"])
+
+                if "keypoint_scores_optical" in dict(keypoints_file[self.memberslist[index]]).keys() and "keypoint_scores_thermal" in dict(keypoints_file[self.memberslist[index]]).keys():
+                    keypoint_scores_optical,keypoint_scores_thermal = np.array(keypoints_file[self.memberslist[index]]["keypoint_scores_optical"]),np.array(keypoints_file[self.memberslist[index]]["keypoint_scores_thermal"])
+
 
         # subsample images if requested
         if self.config['height'] > 0 or self.config['width'] > 0:
+            #TODO WRITE LOGIC FOR DESC  for removing assertion!!!
+            assert (desc_optical is not None) and (optical.shape[0] != self.config["height"] and optical.shape[1] != self.config["width"])
+            
             if self.config['height'] > 0:
                 h = self.config['height']
             else:
@@ -135,7 +149,7 @@ class ImagePairDataset(Dataset):
             optical = optical[i_h:i_h+h, i_w:i_w+w]
             thermal = thermal[i_h:i_h+h, i_w:i_w+w]
 
-            if keypoints is not None:
+            if keypoints is not None: #TODO WRITE LOGIC FOR DESC !!
                 if type(keypoints) is list:
                     keypoints[0] = keypoints[0] - np.array([[i_h,i_w]])
                     keypoints[1] = keypoints[1] - np.array([[i_h,i_w]])
@@ -267,15 +281,23 @@ class ImagePairDataset(Dataset):
             out['optical']['valid_mask'] = torch.from_numpy(valid_mask_optical.astype(np.bool))
             out['optical']['is_optical'] = torch.BoolTensor([optical_is_optical])
             if keypoints_optical is not None:
-                keypoints_optical = utils.generate_keypoint_map(keypoints_optical, (h,w))
-                out['optical']['keypoints'] = torch.from_numpy(keypoints_optical.astype(np.bool))
+                #keypoints_optical = utils.generate_keypoint_map(keypoints_optical, (h,w)) #not needed for this application
+                #out['optical']['keypoints'] = torch.from_numpy(keypoints_optical.astype(np.bool))
+                out['optical']['keypoints'] = torch.from_numpy(keypoints_optical.astype(np.float32))
+                out['optical']['keypoint_scores'] = torch.from_numpy(keypoint_scores_optical.astype(np.bool)).unsqueeze(0)
+            if desc_optical is not None:
+                out['optical']["descriptor"] = torch.from_numpy(desc_optical.astype(np.float32))
 
             out['thermal']['image'] = torch.from_numpy(thermal.astype(np.float32))
             out['thermal']['valid_mask'] = torch.from_numpy(valid_mask_thermal.astype(np.bool))
             out['thermal']['is_optical'] = torch.BoolTensor([thermal_is_optical])
             if keypoints_thermal is not None:
-                keypoints_thermal = utils.generate_keypoint_map(keypoints_thermal, (h,w))
-                out['thermal']['keypoints'] = torch.from_numpy(keypoints_thermal.astype(np.bool))
+                #keypoints_thermal = utils.generate_keypoint_map(keypoints_thermal, (h,w)) #not needed for this application
+                #out['thermal']['keypoints'] = torch.from_numpy(keypoints_thermal.astype(np.bool))
+                out['thermal']['keypoints'] = torch.from_numpy(keypoints_thermal.astype(np.float32))
+                out['thermal']['keypoint_scores'] = torch.from_numpy(keypoint_scores_thermal.astype(np.bool)).unsqueeze(0)
+            if desc_thermal is not None:
+                out['thermal']["descriptor"] = torch.from_numpy(desc_thermal.astype(np.float32))
 
             if "hm_input" in out.keys():
                 out['hm_input'] = torch.from_numpy( out['hm_input'].astype(np.float32))

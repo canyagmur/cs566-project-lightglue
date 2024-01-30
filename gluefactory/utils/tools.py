@@ -195,7 +195,6 @@ def get_class(mod_path, BaseClass):
     the module named mod_name, child of base_path.
     """
     import inspect
-
     mod = __import__(mod_path, fromlist=[""])
     classes = inspect.getmembers(mod, inspect.isclass)
     # Filter classes defined in the module

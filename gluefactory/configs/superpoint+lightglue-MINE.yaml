@@ -6,11 +6,24 @@ model:
       detection_threshold: 0.0
       nms_radius: 3
     matcher:
-      name: matchers.lightglue_pretrained
+      name: matchers.lightglue_pretrained_MINE
+      #weights: "/home/wasproject/Desktop/Can/glue-factory/outputs/training/mark2/checkpoint_best.tar"
       features: superpoint
       depth_confidence: -1
       width_confidence: -1
       filter_threshold: 0.1
+
+    # extractor:
+    #   name: extractors.sift
+    #   backend: opencv
+    #   max_num_keypoints: 2048
+    # matcher:
+    #   name: matchers.lightglue_pretrained_MINE
+    #   weights: "/home/wasproject/Desktop/Can/glue-factory/outputs/training/mark3/checkpoint_best.tar"
+    #   features: sift
+    #   depth_confidence: -1
+    #   width_confidence: -1
+    #   filter_threshold: 0.1
 benchmarks:
     megadepth1500:
       data:
@@ -32,5 +45,6 @@ benchmarks:
         estimator: opencv
         ransac_th: 0.5
       model:
+        weights: "/home/wasproject/Desktop/Can/glue-factory/outputs/training/mark3/checkpoint_49_29149.tar"
         extractor:
-          max_num_keypoints: 1024  # overwrite config above
+          max_num_keypoints: 512  # overwrite config above

@@ -37,7 +37,7 @@ def sample_n(data, num, seed=None):
         return data
 
 
-class MegaDepth(BaseDataset):
+class MPDataset(BaseDataset):
     default_conf = {
         # paths
         "data_dir": "megadepth/",
@@ -70,6 +70,7 @@ class MegaDepth(BaseDataset):
         "p_rotate": 0.0,  # probability to rotate image by +/- 90°
         "reseed": False,
         "seed": 0,
+        'mp_path': '../xpoint-beta-github/configs/cmt-srhenlighter-test.yaml',
         # features from cache
         "load_features": {
             "do": False,
@@ -90,35 +91,11 @@ class _PairDataset(torch.utils.data.Dataset):
         self.root = DATA_PATH / conf.data_dir
         self.conf = conf
 
-        default_config = {
-            'filename': "../multipoint/data/MULTIPOINT/training.hdf5",
-            'keypoints_filename': None,
-            'height': -1,
-            'width': -1,
-            'raw_thermal': False,
-            'single_image': False,
-            'random_pairs': False,
-            'return_name' : True,
-            'augmentation': {
-                'photometric': {
-                    'enable': False,
-                    'primitives': 'all',
-                    'params': {},
-                    'random_order': True,
-                },
-                'homographic': {
-                    'enable': True,
-                    'params': {},
-                    'border_reflect': True,
-                    'valid_border_margin': 0,
-                    'mask_border': True,
-                },
-            }
-        }
         import yaml
-        with open('../xpoint-beta-github/configs/cmt-srhenlighter.yaml', 'r') as f:
+        with open(self.conf.mp_path, 'r') as f:
             self.mp_config = yaml.load(f, Loader=yaml.FullLoader)
         self.mydataset = ImagePairDataset( self.mp_config['dataset'])
+        self.image_shape = torch.Tensor([self.mydataset[0]['optical']['image'].shape[1],self.mydataset[0]['optical']['image'].shape[2]])
 
 
 
@@ -131,18 +108,27 @@ class _PairDataset(torch.utils.data.Dataset):
 
     def getitem(self, idx):
 
-        print(self.mydataset[idx]["optical"]['keypoints'].keys())
-        data0 = {"cache": {},"image": self.mydataset[idx]['optical']['image']}
-        data1 = {"cache": {},"image": self.mydataset[idx]['thermal']['image']}
+        #print(self.mydataset[idx].keys())
+        data0 = {"cache": {},"image": self.mydataset[idx]['optical']['image'],"scales":torch.Tensor([1.0,1.0]),"image_size":self.image_shape,"original_image_size":self.image_shape,"transform":self.mydataset[idx]['optical']['homography']} #1,256,256 since 1 is channel dim but be aware the problem!
+        data1 = {"cache": {},"image": self.mydataset[idx]['thermal']['image'],"scales":torch.Tensor([1.0,1.0]),"image_size":self.image_shape,"original_image_size":self.image_shape,"transform":self.mydataset[idx]['thermal']['homography']}
 
         if self.conf.load_features.do:
-            print("YEEEAH")
+            data0["cache"]["keypoints"] = self.mydataset[idx]['optical']["keypoints"]
+            data0["cache"]["descriptors"] = self.mydataset[idx]["optical"]["descriptor"]
+            #data0["cache"]["keypoint_scores"] = self.mydataset[idx]["optical"]["keypoint_scores"]
+
+            data1["cache"]["keypoints"] = self.mydataset[idx]['thermal']["keypoints"]
+            data1["cache"]["descriptors"] = self.mydataset[idx]["thermal"]["descriptor"]
+            #data1["cache"]["keypoint_scores"] = self.mydataset[idx]["thermal"]["keypoint_scores"]
+
+            #data0["cache"][""]
         data = {
             "view0": data0,
             "view1": data1,
         }
         data["name"] = self.mydataset[idx]['name']
         data["idx"] = idx
+        data["scales"] = torch.Tensor([1.0,1.0])
 
 
         # Calculate the inverse of the optical homography
@@ -176,7 +162,7 @@ def visualize(args):
         "val_num_per_scene": None,
     }
     conf = OmegaConf.merge(conf, OmegaConf.from_cli(args.dotlist))
-    dataset = MegaDepth(conf)
+    dataset = MPDataset(conf)
     loader = dataset.get_data_loader(args.split)
     logger.info("The dataset has elements.", len(loader))
 
@@ -224,7 +210,7 @@ if __name__ == "__main__":
         "prefetch_factor": None,
         "val_num_per_scene": None,
     }
-    dataset = MegaDepth(conf)
+    dataset = MPDataset(conf)
     loader = dataset.get_data_loader("train")
     logger.info("The dataset has elements.", len(loader))
 

@@ -31,6 +31,10 @@ def export_predictions(
     model = model.to(device).eval()
     for data_ in tqdm(loader):
         data = batch_to_device(data_, device, non_blocking=True)
+        # print("data keys:", data.keys())
+        # print(data["view0"].keys())
+        # print(data["view0"]["image_size"].shape,data["view0"]["original_image_size"].shape)
+        # print(data["view0"]["transform"].shape)
         pred = model(data)
         if callback_fn is not None:
             pred = {**callback_fn(pred, data), **pred}

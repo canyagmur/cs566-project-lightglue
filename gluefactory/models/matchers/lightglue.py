@@ -306,7 +306,7 @@ def filter_matches(scores: torch.Tensor, th: float):
 class LightGlue(nn.Module):
     default_conf = {
         "name": "lightglue",  # just for interfacing
-        "input_dim": 256,  # input descriptor dimension (autoselected from weights)
+        "input_dim": 256,  # input descriptor dimension (autoselected from weights) #CHANGE HERE TO 64 IF NEEDED
         "add_scale_ori": False,
         "descriptor_dim": 256,
         "n_layers": 9,
@@ -357,14 +357,18 @@ class LightGlue(nn.Module):
         self.loss_fn = NLLLoss(conf.loss)
 
         state_dict = None
+        print("NOTTOTOT works",conf.weights )
         if conf.weights is not None:
             # weights can be either a path or an existing file from official LG
+            print("HEYEYEYEYEYEY works",conf.weights )
             if Path(conf.weights).exists():
                 state_dict = torch.load(conf.weights, map_location="cpu")
+                print("works1")
             elif (Path(DATA_PATH) / conf.weights).exists():
                 state_dict = torch.load(
                     str(DATA_PATH / conf.weights), map_location="cpu"
                 )
+                print("works2")
             else:
                 fname = (
                     f"{conf.weights}_{conf.weights_from_version}".replace(".", "-")

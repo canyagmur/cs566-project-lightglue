@@ -4,7 +4,7 @@ from omegaconf import OmegaConf
 from ..base_model import BaseModel
 
 
-class LightGlue(BaseModel):
+class LightGluePreTrained(BaseModel):
     default_conf = {"features": "superpoint", **LightGlue_.default_conf}
     required_data_keys = [
         "view0",

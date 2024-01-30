@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_homography(path):
-    print(path)
+    #print(path)
     with open(path) as f:
         result = []
         for line in f.readlines():
@@ -29,7 +29,7 @@ def read_homography(path):
             line = line.replace(" \n", "").replace("\n", "")
             # Split and discard empty strings
             elements = list(filter(lambda s: s, line.split(" ")))
-            print(elements)
+            #print(elements)
             if elements:
                 result.append(elements)
         return np.array(result).astype(float)

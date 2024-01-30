@@ -143,10 +143,11 @@ class _PairDataset(torch.utils.data.Dataset):
             try:
                 info = np.load(str(path), allow_pickle=True)
             except Exception:
+                continue #
                 logger.warning(
                     "Cannot load scene info for scene %s at %s.", scene, path
                 )
-                continue
+                
             self.images[scene] = info["image_paths"]
             self.depths[scene] = info["depth_paths"]
             self.poses[scene] = info["poses"]
