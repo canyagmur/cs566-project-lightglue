@@ -43,6 +43,40 @@ def apply_cached_rotary_emb(freqs: torch.Tensor, t: torch.Tensor) -> torch.Tenso
     return (t * freqs[0]) + (rotate_half(t) * freqs[1])
 
 
+
+
+# PEG  from https://arxiv.org/abs/2102.10882
+
+class ConditionalLearnableFourierPositionalEncoding(nn.Module):
+    def __init__(self, M: int, dim: int, F_dim: int = None, gamma: float = 1.0) -> None:
+        super().__init__()
+        F_dim = F_dim if F_dim is not None else dim
+        self.gamma = gamma
+
+        # Fourier feature mapping
+        self.Wr = nn.Linear(M, F_dim // 2, bias=False)
+        nn.init.normal_(self.Wr.weight.data, mean=0, std=self.gamma**-2)
+
+        # Condition processing
+        self.condition_modulation = nn.Linear(1, F_dim // 2)  # Expecting scalar condition
+
+    def forward(self, x: torch.Tensor, num_keypoints: torch.Tensor) -> torch.Tensor:
+        """Encode position vector with condition based on number of keypoints"""
+        projected = self.Wr(x)
+
+        # Process condition (number of keypoints)
+        # Assuming num_keypoints is a tensor of shape [batch_size, 1] representing the number of keypoints for each instance in the batch
+        condition_modulated = self.condition_modulation(F.relu(num_keypoints))
+
+        # Modulate Fourier features based on condition
+        # Broadcasting condition_modulated to match the shape of projected
+        projected = projected + condition_modulated.unsqueeze(1)
+
+        cosines, sines = torch.cos(projected), torch.sin(projected)
+        emb = torch.stack([cosines, sines], 0).unsqueeze(-3)
+        return emb.repeat_interleave(2, dim=-1)
+    
+
 class LearnableFourierPositionalEncoding(nn.Module):
     def __init__(self, M: int, dim: int, F_dim: int = None, gamma: float = 1.0) -> None:
         super().__init__()
@@ -339,9 +373,16 @@ class LightGlue(nn.Module):
             self.input_proj = nn.Identity()
 
         head_dim = conf.descriptor_dim // conf.num_heads
-        self.posenc = LearnableFourierPositionalEncoding(
-            2 + 2 * conf.add_scale_ori, head_dim, head_dim
-        )
+        # self.posenc = LearnableFourierPositionalEncoding(
+        #     2 + 2 * self.conf.add_scale_ori, head_dim, head_dim
+        # )
+
+        self.posenc = ConditionalLearnableFourierPositionalEncoding(
+            M=2 + 2 * self.conf.add_scale_ori,dim=head_dim,F_dim=head_dim)
+        #look here
+        #self.pos_block =PosCNN(in_chans=2 + 2 * self.conf.add_scale_ori, embed_dim=head_dim, s=1)# Inside the _forward method of LightGlue class
+        
+
 
         h, n, d = conf.num_heads, conf.n_layers, conf.descriptor_dim
 
@@ -444,9 +485,18 @@ class LightGlue(nn.Module):
             desc1 = desc1.half()
         desc0 = self.input_proj(desc0)
         desc1 = self.input_proj(desc1)
-        # cache positional embeddings
-        encoding0 = self.posenc(kpts0)
-        encoding1 = self.posenc(kpts1)
+
+        # Inside the _forward method of LightGlue class
+        condition0 = kpts0.shape[1] * torch.ones((kpts0.shape[0], 1), device=kpts0.device)
+        condition1 = kpts1.shape[1] * torch.ones((kpts1.shape[0], 1), device=kpts1.device)
+
+        encoding0 = self.posenc(kpts0, condition0)
+        encoding1 = self.posenc(kpts1, condition1)
+
+
+        # # cache positional embeddings
+        # encoding0 = self.posenc(kpts0)
+        # encoding1 = self.posenc(kpts1)
 
         # GNN + final_proj + assignment
         do_early_stop = self.conf.depth_confidence > 0 and not self.training
